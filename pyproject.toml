@@ -1,0 +1,12 @@
+[project]
+name = "mcp-server-things3"
+version = "0.1.0"
+description = "A server implementation for interacting with Things3 app on macOS through Claude AI"
+requires-python = ">=3.8"
+dependencies = [
+    "flask",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
