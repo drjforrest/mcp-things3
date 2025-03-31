@@ -2,13 +2,14 @@ import asyncio
 import logging
 import subprocess
 import sys
+sys.path.append("/Users/hanbyulkim/MCP/mcp-things3")
 
 import mcp.types as types
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 
-from .applescript_handler import AppleScriptHandler
+from src.mcp_server_things3.applescript_handler import AppleScriptHandler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +59,15 @@ async def handle_list_tools() -> list[types.Tool]:
         types.Tool(
             name="view-projects",
             description="View all projects in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False
+            },
+        ),
+        types.Tool(
+            name="view-areas",
+            description="View all areas in Things3",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -143,6 +153,18 @@ async def handle_call_tool(
 
             return [types.TextContent(type="text", text="\n".join(response))]
 
+        if name == "view-areas":
+            areas = AppleScriptHandler.get_areas() or []
+            if not areas:
+                return [types.TextContent(type="text", text="No projects found in Things3.")]
+
+            response = ["Areas in Things3:"]
+            for area in areas:
+                title = (area.get("title", "Untitled Area")).strip()
+                response.append(f"\n• {title}")
+
+            return [types.TextContent(type="text", text="\n".join(response))]
+
         if name == "view-todos":
             todos = AppleScriptHandler.get_todays_tasks() or []
             if not todos:
@@ -164,10 +186,10 @@ async def handle_call_tool(
             # Build the Things3 URL
             base_url = "things:///add-project"
             params = []
-            
+
             # Required parameters
             params.append(f'title="{arguments["title"]}"')
-            
+
             # Optional parameters
             if "notes" in arguments:
                 params.append(f'notes="{arguments["notes"]}"')
@@ -180,10 +202,10 @@ async def handle_call_tool(
             if "tags" in arguments:
                 tags = ",".join(arguments['tags'])
                 params.append(f'tags="{tags}"')
-            
+
             url = f"{base_url}?{'&'.join(params)}"
             logger.info(f"Creating project with URL: {url}")
-            
+
             try:
                 XCallbackURLHandler.call_url(url)
                 return [
@@ -208,10 +230,10 @@ async def handle_call_tool(
             # Build the Things3 URL
             base_url = "things:///add"
             params = []
-            
+
             # Required parameters
             params.append(f'title="{arguments["title"]}"')
-            
+
             # Optional parameters
             if "notes" in arguments:
                 params.append(f'notes="{arguments["notes"]}"')
@@ -229,10 +251,10 @@ async def handle_call_tool(
                 params.append(f'list="{arguments["list"]}"')
             if "heading" in arguments:
                 params.append(f'heading="{arguments["heading"]}"')
-            
+
             url = f"{base_url}?{'&'.join(params)}"
             logger.info(f"Creating todo with URL: {url}")
-            
+
             try:
                 XCallbackURLHandler.call_url(url)
                 return [
@@ -259,7 +281,7 @@ async def handle_call_tool(
 async def main():
     """Run the server."""
     logger.info("Starting Things3 MCP server...")
-    
+
     # Handle graceful shutdown
     def handle_signal(signum, frame):
         logger.info("Shutting down gracefully...")

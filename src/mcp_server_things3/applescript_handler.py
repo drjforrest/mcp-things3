@@ -193,3 +193,30 @@ class AppleScriptHandler:
 
         result = AppleScriptHandler.run_script(script)
         return json.loads(result)
+
+    @staticmethod
+    def get_areas() -> List[Dict[str, str]]:
+        """
+        Retrieves all areas from Things3 using AppleScript.
+        """
+        script = '''
+            tell application "Things3"
+                set areaList to areas
+                set areaJSON to "["
+
+                repeat with a in areaList
+                    set areaTitle to name of a
+                    set areaJSON to areaJSON & "{\\"title\\": \\"" & areaTitle & "\\"},"
+                end repeat
+
+                if length of areaJSON > 1 then
+                    set areaJSON to text 1 thru -2 of areaJSON
+                end if
+                set areaJSON to areaJSON & "]"
+
+                return areaJSON
+            end tell
+        '''
+
+        result = AppleScriptHandler.run_script(script)
+        return json.loads(result)
