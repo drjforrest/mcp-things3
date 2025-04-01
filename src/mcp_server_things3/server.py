@@ -110,7 +110,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "notes": {"type": "string"},
                     "when": {"type": "string"},
                     "deadline": {"type": "string"},
-                    "checklist": {"type": "array", "items": {"type": "string"}},
+                    "checklist-items": {"type": "array", "items": {"type": "string"}},
                     "tags": {"type": "array", "items": {"type": "string"}},
                     "list": {"type": "string"},
                     "heading": {"type": "string"},
@@ -226,16 +226,16 @@ async def handle_call_tool(
 
             # Optional parameters
             if "notes" in arguments:
-                params.append(f'notes="{arguments["notes"]}"')
+                params.append(f'notes={urllib.parse.quote(arguments["notes"])}')
             if "area" in arguments:
-                params.append(f'area="{arguments["area"]}"')
+                params.append(f'area={urllib.parse.quote(arguments["area"])}')
             if "when" in arguments:
-                params.append(f'when="{arguments["when"]}"')
+                params.append(f'when={urllib.parse.quote(arguments["when"])}')
             if "deadline" in arguments:
-                params.append(f'deadline="{arguments["deadline"]}"')
+                params.append(f'deadline={urllib.parse.quote(arguments["deadline"])}')
             if "tags" in arguments:
                 tags = ",".join(arguments['tags'])
-                params.append(f'tags="{tags}"')
+                params.append(f'tags={urllib.parse.quote(tags)}')
 
             url = f"{base_url}?{'&'.join(params)}"
             logger.info(f"Creating project with URL: {url}")
@@ -270,21 +270,21 @@ async def handle_call_tool(
 
             # Optional parameters
             if "notes" in arguments:
-                params.append(f'notes="{arguments["notes"]}"')
+                params.append(f'notes={urllib.parse.quote(arguments["notes"])}')
             if "when" in arguments:
-                params.append(f'when="{arguments["when"]}"')
+                params.append(f'when={urllib.parse.quote(arguments["when"])}')
             if "deadline" in arguments:
-                params.append(f'deadline="{arguments["deadline"]}"')
-            if "checklist" in arguments:
-                checklist = "\n".join(arguments['checklist'])
-                params.append(f'checklist="{checklist}"')
+                params.append(f'deadline={urllib.parse.quote(arguments["deadline"])}')
+            if "checklist-items" in arguments:
+                checklist = "\n".join(arguments['checklist-items'])
+                params.append(f'checklist-items={urllib.parse.quote(checklist)}')
             if "tags" in arguments:
                 tags = ",".join(arguments['tags'])
-                params.append(f'tags="{tags}"')
+                params.append(f'tags={urllib.parse.quote(tags)}')
             if "list" in arguments:
-                params.append(f'list="{arguments["list"]}"')
+                params.append(f'list={urllib.parse.quote(arguments["list"])}')
             if "heading" in arguments:
-                params.append(f'heading="{arguments["heading"]}"')
+                params.append(f'heading={urllib.parse.quote(arguments["heading"])}')
 
             url = f"{base_url}?{'&'.join(params)}"
             logger.info(f"Creating todo with URL: {url}")
