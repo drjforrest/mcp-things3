@@ -1,4 +1,3 @@
-from loguru import logger
 import subprocess
 from typing import List, Dict, Any
 import json
@@ -301,6 +300,5 @@ class AppleScriptHandler:
                 end repeat
             end tell
         '''
-        logger.debug(script)
 
         AppleScriptHandler.run_script(script)
