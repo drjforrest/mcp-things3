@@ -193,7 +193,8 @@ async def handle_call_tool(
                 title = (todo.get("title", "Untitled Todo")).strip()
                 due_date = todo.get("due_date", "No Due Date")
                 when_date = todo.get("when", "No Scheduled Date")
-                response.append(f"\n• {title} (Due: {due_date}, When: {when_date})")
+                notes = todo.get("notes", "No Notes")
+                response.append(f"\n• {title} (Due: {due_date}, When: {when_date}, Notes: {notes})")
 
             return [types.TextContent(type="text", text="\n".join(response))]
 
