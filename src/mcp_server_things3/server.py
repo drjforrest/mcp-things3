@@ -260,6 +260,7 @@ async def handle_call_tool(
         if name == "create-things3-todo":
             if not arguments:
                 raise ValueError("Missing arguments")
+            logger.debug(arguments)
 
             # Build the Things3 URL
             base_url = "things:///add"
