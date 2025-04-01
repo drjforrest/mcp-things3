@@ -190,7 +190,7 @@ async def handle_call_tool(
         if name == "view-areas":
             areas = AppleScriptHandler.get_areas() or []
             if not areas:
-                return [types.TextContent(type="text", text="No projects found in Things3.")]
+                return [types.TextContent(type="text", text="No areas found in Things3.")]
 
             response = ["Areas in Things3:"]
             for area in areas:
