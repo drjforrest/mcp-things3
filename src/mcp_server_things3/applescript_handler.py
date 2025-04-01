@@ -1,3 +1,4 @@
+from loguru import logger
 import subprocess
 from typing import List, Dict, Any
 import json
@@ -283,5 +284,23 @@ class AppleScriptHandler:
                 end repeat
             end tell
         '''
+
+        AppleScriptHandler.run_script(script)
+
+    @staticmethod
+    def set_tags(task: str, tags: List[str]) -> None:
+        """
+        Set tags to a task in Things3.
+        """
+        tag = ', '.join(tags)
+        script = f'''
+            tell application "Things3"
+                set foundTodos to to dos where name is "{task}"
+                repeat with t in foundTodos
+                    set tag names of t to "{tag}"
+                end repeat
+            end tell
+        '''
+        logger.debug(script)
 
         AppleScriptHandler.run_script(script)

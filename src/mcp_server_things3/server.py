@@ -161,6 +161,18 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["task", "area"]
             },
         ),
+        types.Tool(
+            name="set-tags",
+            description="Set tags for task in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "tags": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["task", "tags"]
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -340,6 +352,13 @@ async def handle_call_tool(
                 raise ValueError("Missing arguments")
 
             AppleScriptHandler.assign_area(arguments["task"], arguments["area"])
+
+        if name == "set-tags":
+            if not arguments:
+                raise ValueError("Missing arguments")
+            logger.debug(arguments)
+
+            AppleScriptHandler.set_tags(arguments["task"], arguments["tags"])
 
         raise ValueError(f"Unknown tool: {name}")
 
