@@ -9,6 +9,7 @@ from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 
+import urllib.parse
 from src.mcp_server_things3.applescript_handler import AppleScriptHandler
 
 # Configure logging
@@ -221,7 +222,7 @@ async def handle_call_tool(
             params = []
 
             # Required parameters
-            params.append(f'title="{arguments["title"]}"')
+            params.append(f'title={urllib.parse.quote(arguments["title"])}')
 
             # Optional parameters
             if "notes" in arguments:
@@ -265,7 +266,7 @@ async def handle_call_tool(
             params = []
 
             # Required parameters
-            params.append(f'title="{arguments["title"]}"')
+            params.append(f'title={urllib.parse.quote(arguments["title"])}')
 
             # Optional parameters
             if "notes" in arguments:
