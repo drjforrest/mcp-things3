@@ -220,3 +220,68 @@ class AppleScriptHandler:
 
         result = AppleScriptHandler.run_script(script)
         return json.loads(result)
+
+    @staticmethod
+    def get_current_selected_todos() -> List[Dict[str, Any]]:
+        """
+        Retrieves the selected todos in Things3 using AppleScript.
+        """
+        script = '''
+            tell application "Things3"
+                set todoList to selected to dos
+                set todoJSON to "["
+
+                repeat with t in todoList
+                    set todoTitle to name of t
+                    set todoNotes to ""
+                    if notes of t is not missing value then
+                        set todoNotes to notes of t
+                    end if
+
+                    set todoJSON to todoJSON & "{\\"title\\": \\"" & todoTitle & "\\"," & ¬
+                        "\\"notes\\": \\"" & todoNotes & "\\"},"
+                end repeat
+
+                if length of todoJSON > 1 then
+                    set todoJSON to text 1 thru -2 of todoJSON
+                end if
+                set todoJSON to todoJSON & "]"
+
+                return todoJSON
+            end tell
+        '''
+
+        result = AppleScriptHandler.run_script(script)
+        return json.loads(result)
+
+    @staticmethod
+    def assign_project(task: str, project: str) -> None:
+        """
+        Assigns a project to a task in Things3.
+        """
+        script = f'''
+            tell application "Things3"
+                set foundTodos to to dos where name is "{task}"
+                repeat with t in foundTodos
+                    set project of t to project "{project}"
+                end repeat
+            end tell
+        '''
+
+        AppleScriptHandler.run_script(script)
+
+    @staticmethod
+    def assign_area(task: str, area: str) -> None:
+        """
+        Assigns a area to a task in Things3.
+        """
+        script = f'''
+            tell application "Things3"
+                set foundTodos to to dos where name is "{task}"
+                repeat with t in foundTodos
+                    set area of t to area "{area}"
+                end repeat
+            end tell
+        '''
+
+        AppleScriptHandler.run_script(script)

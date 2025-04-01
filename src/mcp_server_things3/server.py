@@ -116,7 +116,40 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["title"]
             },
-        )
+        ),
+        types.Tool(
+            name="get-selected-todos",
+            description="Get current selected todos in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False
+            },
+        ),
+        types.Tool(
+            name="assign-project",
+            description="Assign project to task in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "project": {"type": "string"},
+                },
+                "required": ["task", "project"]
+            },
+        ),
+        types.Tool(
+            name="assign-area",
+            description="Assign area to task in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "area": {"type": "string"},
+                },
+                "required": ["task", "area"]
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -271,6 +304,30 @@ async def handle_call_tool(
                         text=f"Failed to create to-do in Things3: {str(e)}",
                     )
                 ]
+
+        if name == "get-selected-todos":
+            todos = AppleScriptHandler.get_current_selected_todos()
+            if not todos:
+                return [types.TextContent(type="text", text="No selected todos found in Things3.")]
+
+            response = ["Selected todos in Things3:"]
+            for todo in todos:
+                title = (todo.get("title", "Untitled Area")).strip()
+                response.append(f"\n• {title}")
+
+            return [types.TextContent(type="text", text="\n".join(response))]
+
+        if name == "assign-project":
+            if not arguments:
+                raise ValueError("Missing arguments")
+
+            AppleScriptHandler.assign_project(arguments["task"], arguments["project"])
+
+        if name == "assign-area":
+            if not arguments:
+                raise ValueError("Missing arguments")
+
+            AppleScriptHandler.assign_area(arguments["task"], arguments["area"])
 
         raise ValueError(f"Unknown tool: {name}")
 
