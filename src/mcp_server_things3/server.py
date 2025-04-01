@@ -2,7 +2,11 @@ import asyncio
 import logging
 import subprocess
 import sys
-sys.path.append("/Users/hanbyulkim/MCP/mcp-things3")
+from pathlib import Path
+
+root_dir = str(Path(__file__).parent.parent.parent.absolute())
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
 
 import mcp.types as types
 from mcp.server import Server, NotificationOptions
