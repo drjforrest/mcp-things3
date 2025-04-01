@@ -2,17 +2,29 @@ import asyncio
 import logging
 import subprocess
 import sys
+from pathlib import Path
+
+root_dir = str(Path(__file__).parent.parent.parent.absolute())
+if root_dir not in sys.path:
+    sys.path.append(root_dir)
 
 import mcp.types as types
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 
-from .applescript_handler import AppleScriptHandler
+import urllib.parse
+from src.mcp_server_things3.applescript_handler import AppleScriptHandler
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from loguru import logger
+
+# # Configure logging
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
+# set logger file
+logger.add("/Users/hanbyulkim/MCP/mcp-things3/mcp-server-things3.log", rotation="10 MB", retention="10 days", level="DEBUG")
+
 
 # Initialize the server
 server = Server("mcp-server-things3")
@@ -65,6 +77,15 @@ async def handle_list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
+            name="view-areas",
+            description="View all areas in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False
+            },
+        ),
+        types.Tool(
             name="view-todos",
             description="View all todos in Things3",
             inputSchema={
@@ -99,14 +120,47 @@ async def handle_list_tools() -> list[types.Tool]:
                     "notes": {"type": "string"},
                     "when": {"type": "string"},
                     "deadline": {"type": "string"},
-                    "checklist": {"type": "array", "items": {"type": "string"}},
+                    "checklist-items": {"type": "array", "items": {"type": "string"}},
                     "tags": {"type": "array", "items": {"type": "string"}},
                     "list": {"type": "string"},
                     "heading": {"type": "string"},
                 },
                 "required": ["title"]
             },
-        )
+        ),
+        types.Tool(
+            name="get-selected-todos",
+            description="Get current selected todos in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False
+            },
+        ),
+        types.Tool(
+            name="assign-project",
+            description="Assign project to task in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "project": {"type": "string"},
+                },
+                "required": ["task", "project"]
+            },
+        ),
+        types.Tool(
+            name="assign-area",
+            description="Assign area to task in Things3",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "area": {"type": "string"},
+                },
+                "required": ["task", "area"]
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -143,6 +197,18 @@ async def handle_call_tool(
 
             return [types.TextContent(type="text", text="\n".join(response))]
 
+        if name == "view-areas":
+            areas = AppleScriptHandler.get_areas() or []
+            if not areas:
+                return [types.TextContent(type="text", text="No areas found in Things3.")]
+
+            response = ["Areas in Things3:"]
+            for area in areas:
+                title = (area.get("title", "Untitled Area")).strip()
+                response.append(f"\n• {title}")
+
+            return [types.TextContent(type="text", text="\n".join(response))]
+
         if name == "view-todos":
             todos = AppleScriptHandler.get_todays_tasks() or []
             if not todos:
@@ -164,26 +230,26 @@ async def handle_call_tool(
             # Build the Things3 URL
             base_url = "things:///add-project"
             params = []
-            
+
             # Required parameters
-            params.append(f'title="{arguments["title"]}"')
-            
+            params.append(f'title={urllib.parse.quote(arguments["title"])}')
+
             # Optional parameters
             if "notes" in arguments:
-                params.append(f'notes="{arguments["notes"]}"')
+                params.append(f'notes={urllib.parse.quote(arguments["notes"])}')
             if "area" in arguments:
-                params.append(f'area="{arguments["area"]}"')
+                params.append(f'area={urllib.parse.quote(arguments["area"])}')
             if "when" in arguments:
-                params.append(f'when="{arguments["when"]}"')
+                params.append(f'when={urllib.parse.quote(arguments["when"])}')
             if "deadline" in arguments:
-                params.append(f'deadline="{arguments["deadline"]}"')
+                params.append(f'deadline={urllib.parse.quote(arguments["deadline"])}')
             if "tags" in arguments:
                 tags = ",".join(arguments['tags'])
-                params.append(f'tags="{tags}"')
-            
+                params.append(f'tags={urllib.parse.quote(tags)}')
+
             url = f"{base_url}?{'&'.join(params)}"
             logger.info(f"Creating project with URL: {url}")
-            
+
             try:
                 XCallbackURLHandler.call_url(url)
                 return [
@@ -204,35 +270,36 @@ async def handle_call_tool(
         if name == "create-things3-todo":
             if not arguments:
                 raise ValueError("Missing arguments")
+            logger.debug(arguments)
 
             # Build the Things3 URL
             base_url = "things:///add"
             params = []
-            
+
             # Required parameters
-            params.append(f'title="{arguments["title"]}"')
-            
+            params.append(f'title={urllib.parse.quote(arguments["title"])}')
+
             # Optional parameters
             if "notes" in arguments:
-                params.append(f'notes="{arguments["notes"]}"')
+                params.append(f'notes={urllib.parse.quote(arguments["notes"])}')
             if "when" in arguments:
-                params.append(f'when="{arguments["when"]}"')
+                params.append(f'when={urllib.parse.quote(arguments["when"])}')
             if "deadline" in arguments:
-                params.append(f'deadline="{arguments["deadline"]}"')
-            if "checklist" in arguments:
-                checklist = "\n".join(arguments['checklist'])
-                params.append(f'checklist="{checklist}"')
+                params.append(f'deadline={urllib.parse.quote(arguments["deadline"])}')
+            if "checklist-items" in arguments:
+                checklist = "\n".join(arguments['checklist-items'])
+                params.append(f'checklist-items={urllib.parse.quote(checklist)}')
             if "tags" in arguments:
                 tags = ",".join(arguments['tags'])
-                params.append(f'tags="{tags}"')
+                params.append(f'tags={urllib.parse.quote(tags)}')
             if "list" in arguments:
-                params.append(f'list="{arguments["list"]}"')
+                params.append(f'list={urllib.parse.quote(arguments["list"])}')
             if "heading" in arguments:
-                params.append(f'heading="{arguments["heading"]}"')
-            
+                params.append(f'heading={urllib.parse.quote(arguments["heading"])}')
+
             url = f"{base_url}?{'&'.join(params)}"
             logger.info(f"Creating todo with URL: {url}")
-            
+
             try:
                 XCallbackURLHandler.call_url(url)
                 return [
@@ -250,6 +317,30 @@ async def handle_call_tool(
                     )
                 ]
 
+        if name == "get-selected-todos":
+            todos = AppleScriptHandler.get_current_selected_todos()
+            if not todos:
+                return [types.TextContent(type="text", text="No selected todos found in Things3.")]
+
+            response = ["Selected todos in Things3:"]
+            for todo in todos:
+                title = (todo.get("title", "Untitled Area")).strip()
+                response.append(f"\n• {title}")
+
+            return [types.TextContent(type="text", text="\n".join(response))]
+
+        if name == "assign-project":
+            if not arguments:
+                raise ValueError("Missing arguments")
+
+            AppleScriptHandler.assign_project(arguments["task"], arguments["project"])
+
+        if name == "assign-area":
+            if not arguments:
+                raise ValueError("Missing arguments")
+
+            AppleScriptHandler.assign_area(arguments["task"], arguments["area"])
+
         raise ValueError(f"Unknown tool: {name}")
 
     except Exception as e:
@@ -259,7 +350,7 @@ async def handle_call_tool(
 async def main():
     """Run the server."""
     logger.info("Starting Things3 MCP server...")
-    
+
     # Handle graceful shutdown
     def handle_signal(signum, frame):
         logger.info("Shutting down gracefully...")
