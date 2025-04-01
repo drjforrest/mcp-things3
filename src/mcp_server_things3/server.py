@@ -12,9 +12,15 @@ import mcp.server.stdio
 import urllib.parse
 from src.mcp_server_things3.applescript_handler import AppleScriptHandler
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from loguru import logger
+
+# # Configure logging
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
+# set logger file
+logger.add("/Users/hanbyulkim/MCP/mcp-things3/mcp-server-things3.log", rotation="10 MB", retention="10 days", level="DEBUG")
+
 
 # Initialize the server
 server = Server("mcp-server-things3")

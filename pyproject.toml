@@ -2,9 +2,12 @@
 name = "mcp-server-things3"
 version = "0.1.0"
 description = "A server implementation for interacting with Things3 app on macOS through Claude AI"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "flask",
+    "mcp[cli]>=1.6.0",
+    "pip>=25.0.1",
+    "loguru>=0.7.3",
 ]
 
 [build-system]
