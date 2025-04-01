@@ -1,2 +1,5 @@
 .venv
 .ropeproject
+__pycache__
+*.pyc
+*.log
