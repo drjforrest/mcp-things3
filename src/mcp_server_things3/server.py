@@ -2,13 +2,18 @@ import asyncio
 import logging
 import subprocess
 import sys
+from urllib.parse import quote
 
 import mcp.types as types
 from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 import mcp.server.stdio
 
-from .applescript_handler import AppleScriptHandler
+# Handle both relative and absolute imports
+try:
+    from .applescript_handler import AppleScriptHandler
+except ImportError:
+    from applescript_handler import AppleScriptHandler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +24,25 @@ server = Server("mcp-server-things3")
 
 class XCallbackURLHandler:
     """Handles x-callback-url execution for Things3."""
+
+    @staticmethod
+    def build_url(base_url: str, params: dict) -> str:
+        """
+        Builds a properly encoded x-callback-url.
+        """
+        if not params:
+            return base_url
+        
+        encoded_params = []
+        for key, value in params.items():
+            if value is not None:
+                # Handle list values (like tags)
+                if isinstance(value, list):
+                    value = ",".join(str(v) for v in value)
+                # Use quote() instead of quote_plus() - Things3 prefers %20 over +
+                encoded_params.append(f"{key}={quote(str(value), safe='')}")
+        
+        return f"{base_url}?{'&'.join(encoded_params)}"
 
     @staticmethod
     def call_url(url: str) -> str:
@@ -39,6 +63,22 @@ class XCallbackURLHandler:
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to execute x-callback-url: {e}")
             raise RuntimeError(f"Failed to execute x-callback-url: {e}")
+    
+    @staticmethod
+    def validate_things3_available() -> bool:
+        """
+        Check if Things3 is available on the system.
+        """
+        try:
+            result = subprocess.run(
+                ['osascript', '-e', 'tell application "System Events" to exists application process "Things3"'],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            return result.stdout.strip() == "true"
+        except subprocess.CalledProcessError:
+            return False
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
@@ -106,6 +146,28 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 "required": ["title"]
             },
+        ),
+        types.Tool(
+            name="complete-things3-todo",
+            description="Mark a Things3 todo as completed by searching for its title",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "The title or partial title of the todo to complete"},
+                },
+                "required": ["title"]
+            },
+        ),
+        types.Tool(
+            name="search-things3-todos",
+            description="Search for todos in Things3 by title or content",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search term to look for in todo titles and notes"},
+                },
+                "required": ["query"]
+            },
         )
     ]
 
@@ -118,70 +180,101 @@ async def handle_call_tool(
     """
     try:
         if name == "view-inbox":
-            todos = AppleScriptHandler.get_inbox_tasks() or []
-            if not todos:
-                return [types.TextContent(type="text", text="No todos found in Things3 inbox.")]
+            # Validate Things3 is accessible
+            if not AppleScriptHandler.validate_things3_access():
+                return [types.TextContent(type="text", text="Things3 is not available. Please ensure Things3 is installed and running.")]
+            
+            try:
+                todos = AppleScriptHandler.get_inbox_tasks() or []
+                if not todos:
+                    return [types.TextContent(type="text", text="No todos found in Things3 inbox.")]
 
-            response = ["Todos in Things3 inbox:"]
-            for todo in todos:
-                title = (todo.get("title", "Untitled Todo")).strip()
-                due_date = todo.get("due_date", "No Due Date")
-                when_date = todo.get("when", "No Scheduled Date")
-                response.append(f"\n• {title} (Due: {due_date}, When: {when_date})")
+                response = ["Todos in Things3 inbox:"]
+                for todo in todos:
+                    title = (todo.get("title", "Untitled Todo")).strip()
+                    due_date = todo.get("due_date", "No Due Date")
+                    when_date = todo.get("when", "No Scheduled Date")
+                    response.append(f"\n• {title} (Due: {due_date}, When: {when_date})")
 
-            return [types.TextContent(type="text", text="\n".join(response))]
+                return [types.TextContent(type="text", text="\n".join(response))]
+            except Exception as e:
+                logger.error(f"Error retrieving inbox tasks: {e}")
+                return [types.TextContent(type="text", text=f"Failed to retrieve inbox tasks: {str(e)}")]
 
         if name == "view-projects":
-            projects = AppleScriptHandler.get_projects() or []
-            if not projects:
-                return [types.TextContent(type="text", text="No projects found in Things3.")]
+            # Validate Things3 is accessible
+            if not AppleScriptHandler.validate_things3_access():
+                return [types.TextContent(type="text", text="Things3 is not available. Please ensure Things3 is installed and running.")]
+            
+            try:
+                projects = AppleScriptHandler.get_projects() or []
+                if not projects:
+                    return [types.TextContent(type="text", text="No projects found in Things3.")]
 
-            response = ["Projects in Things3:"]
-            for project in projects:
-                title = (project.get("title", "Untitled Project")).strip()
-                response.append(f"\n• {title}")
+                response = ["Projects in Things3:"]
+                for project in projects:
+                    title = (project.get("title", "Untitled Project")).strip()
+                    response.append(f"\n• {title}")
 
-            return [types.TextContent(type="text", text="\n".join(response))]
+                return [types.TextContent(type="text", text="\n".join(response))]
+            except Exception as e:
+                logger.error(f"Error retrieving projects: {e}")
+                return [types.TextContent(type="text", text=f"Failed to retrieve projects: {str(e)}")]
 
         if name == "view-todos":
-            todos = AppleScriptHandler.get_todays_tasks() or []
-            if not todos:
-                return [types.TextContent(type="text", text="No todos found in Things3.")]
+            # Validate Things3 is accessible
+            if not AppleScriptHandler.validate_things3_access():
+                return [types.TextContent(type="text", text="Things3 is not available. Please ensure Things3 is installed and running.")]
+            
+            try:
+                todos = AppleScriptHandler.get_todays_tasks() or []
+                if not todos:
+                    return [types.TextContent(type="text", text="No todos found in Things3.")]
 
-            response = ["Todos in Things3:"]
-            for todo in todos:
-                title = (todo.get("title", "Untitled Todo")).strip()
-                due_date = todo.get("due_date", "No Due Date")
-                when_date = todo.get("when", "No Scheduled Date")
-                response.append(f"\n• {title} (Due: {due_date}, When: {when_date})")
+                response = ["Todos in Things3:"]
+                for todo in todos:
+                    title = (todo.get("title", "Untitled Todo")).strip()
+                    due_date = todo.get("due_date", "No Due Date")
+                    when_date = todo.get("when", "No Scheduled Date")
+                    response.append(f"\n• {title} (Due: {due_date}, When: {when_date})")
 
-            return [types.TextContent(type="text", text="\n".join(response))]
+                return [types.TextContent(type="text", text="\n".join(response))]
+            except Exception as e:
+                logger.error(f"Error retrieving todos: {e}")
+                return [types.TextContent(type="text", text=f"Failed to retrieve todos: {str(e)}")]
 
         if name == "create-things3-project":
             if not arguments:
                 raise ValueError("Missing arguments")
 
-            # Build the Things3 URL
+            # Validate Things3 is available
+            if not XCallbackURLHandler.validate_things3_available():
+                return [
+                    types.TextContent(
+                        type="text",
+                        text="Things3 is not running or not installed. Please start Things3 and try again.",
+                    )
+                ]
+
+            # Build the Things3 URL with proper encoding
             base_url = "things:///add-project"
-            params = []
-            
-            # Required parameters
-            params.append(f'title="{arguments["title"]}"')
+            params = {
+                "title": arguments["title"]
+            }
             
             # Optional parameters
             if "notes" in arguments:
-                params.append(f'notes="{arguments["notes"]}"')
+                params["notes"] = arguments["notes"]
             if "area" in arguments:
-                params.append(f'area="{arguments["area"]}"')
+                params["area"] = arguments["area"]
             if "when" in arguments:
-                params.append(f'when="{arguments["when"]}"')
+                params["when"] = arguments["when"]
             if "deadline" in arguments:
-                params.append(f'deadline="{arguments["deadline"]}"')
+                params["deadline"] = arguments["deadline"]
             if "tags" in arguments:
-                tags = ",".join(arguments['tags'])
-                params.append(f'tags="{tags}"')
+                params["tags"] = arguments["tags"]
             
-            url = f"{base_url}?{'&'.join(params)}"
+            url = XCallbackURLHandler.build_url(base_url, params)
             logger.info(f"Creating project with URL: {url}")
             
             try:
@@ -205,32 +298,38 @@ async def handle_call_tool(
             if not arguments:
                 raise ValueError("Missing arguments")
 
-            # Build the Things3 URL
+            # Validate Things3 is available
+            if not XCallbackURLHandler.validate_things3_available():
+                return [
+                    types.TextContent(
+                        type="text",
+                        text="Things3 is not running or not installed. Please start Things3 and try again.",
+                    )
+                ]
+
+            # Build the Things3 URL with proper encoding
             base_url = "things:///add"
-            params = []
-            
-            # Required parameters
-            params.append(f'title="{arguments["title"]}"')
+            params = {
+                "title": arguments["title"]
+            }
             
             # Optional parameters
             if "notes" in arguments:
-                params.append(f'notes="{arguments["notes"]}"')
+                params["notes"] = arguments["notes"]
             if "when" in arguments:
-                params.append(f'when="{arguments["when"]}"')
+                params["when"] = arguments["when"]
             if "deadline" in arguments:
-                params.append(f'deadline="{arguments["deadline"]}"')
+                params["deadline"] = arguments["deadline"]
             if "checklist" in arguments:
-                checklist = "\n".join(arguments['checklist'])
-                params.append(f'checklist="{checklist}"')
+                params["checklist"] = "\n".join(arguments["checklist"])
             if "tags" in arguments:
-                tags = ",".join(arguments['tags'])
-                params.append(f'tags="{tags}"')
+                params["tags"] = arguments["tags"]
             if "list" in arguments:
-                params.append(f'list="{arguments["list"]}"')
+                params["list"] = arguments["list"]
             if "heading" in arguments:
-                params.append(f'heading="{arguments["heading"]}"')
+                params["heading"] = arguments["heading"]
             
-            url = f"{base_url}?{'&'.join(params)}"
+            url = XCallbackURLHandler.build_url(base_url, params)
             logger.info(f"Creating todo with URL: {url}")
             
             try:
@@ -247,6 +346,85 @@ async def handle_call_tool(
                     types.TextContent(
                         type="text",
                         text=f"Failed to create to-do in Things3: {str(e)}",
+                    )
+                ]
+
+        if name == "complete-things3-todo":
+            if not arguments:
+                raise ValueError("Missing arguments")
+
+            # Validate Things3 is available
+            if not AppleScriptHandler.validate_things3_access():
+                return [
+                    types.TextContent(
+                        type="text",
+                        text="Things3 is not available. Please ensure Things3 is installed and running.",
+                    )
+                ]
+
+            try:
+                success = AppleScriptHandler.complete_todo_by_title(arguments["title"])
+                if success:
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=f"Successfully completed todo containing '{arguments['title']}'",
+                        )
+                    ]
+                else:
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=f"No incomplete todo found containing '{arguments['title']}'",
+                        )
+                    ]
+            except Exception as e:
+                logger.error(f"Error completing todo: {e}")
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Failed to complete todo: {str(e)}",
+                    )
+                ]
+
+        if name == "search-things3-todos":
+            if not arguments:
+                raise ValueError("Missing arguments")
+
+            # Validate Things3 is available
+            if not AppleScriptHandler.validate_things3_access():
+                return [
+                    types.TextContent(
+                        type="text",
+                        text="Things3 is not available. Please ensure Things3 is installed and running.",
+                    )
+                ]
+
+            try:
+                todos = AppleScriptHandler.search_todos(arguments["query"])
+                if not todos:
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=f"No todos found matching '{arguments['query']}'",
+                        )
+                    ]
+
+                response = [f"Found {len(todos)} todo(s) matching '{arguments['query']}':"]
+                for todo in todos:
+                    title = todo.get("title", "Untitled Todo")
+                    status = todo.get("status", "unknown")
+                    status_icon = "✅" if status == "completed" else "⏳"
+                    due_date = todo.get("due_date", "No Due Date")
+                    response.append(f"\n{status_icon} {title} (Due: {due_date})")
+
+                return [types.TextContent(type="text", text="\n".join(response))]
+            except Exception as e:
+                logger.error(f"Error searching todos: {e}")
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"Failed to search todos: {str(e)}",
                     )
                 ]
 

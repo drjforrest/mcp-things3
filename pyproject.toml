@@ -4,8 +4,11 @@ version = "0.1.0"
 description = "A server implementation for interacting with Things3 app on macOS through Claude AI"
 requires-python = ">=3.8"
 dependencies = [
-    "flask",
+    "mcp>=0.1.0",
 ]
+
+[project.scripts]
+mcp-server-things3 = "mcp_server_things3.server:main"
 
 [build-system]
 requires = ["hatchling"]
