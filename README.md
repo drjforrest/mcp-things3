@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/drjforrest-mcp-things3-badge.png)](https://mseep.ai/app/drjforrest-mcp-things3)
+
 # MCP Server for Things3
 
 This MCP server provides integration with Things3, allowing you to create and manage tasks and projects through the MCP protocol. It includes special support for synchronization with Agenda projects.
