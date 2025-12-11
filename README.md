@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/drjforrest-mcp-things3-badge.png)](https://mseep.ai/app/drjforrest-mcp-things3)
+
 # MCP Server for Things3
 
 A robust MCP (Model Context Protocol) server providing comprehensive integration with Things3, allowing you to create, manage, and search tasks and projects through the MCP protocol. Features improved error handling, secure URL encoding, and enhanced AppleScript integration.
