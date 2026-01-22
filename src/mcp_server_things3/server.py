@@ -434,8 +434,8 @@ async def handle_call_tool(
         logger.error(f"Error handling tool {name}: {e}")
         return [types.TextContent(type="text", text=f"Error: {str(e)}")]
 
-async def main():
-    """Run the server."""
+async def async_main():
+    """Run the server asynchronously."""
     logger.info("Starting Things3 MCP server...")
     
     # Handle graceful shutdown
@@ -469,5 +469,10 @@ async def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
+def main():
+    """Entry point for the MCP server."""
+    asyncio.run(async_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
